@@ -1,6 +1,7 @@
 package rtconn
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -18,8 +19,11 @@ func TestEcho(t *testing.T) {
 	go h2cServe(addr, "echo")
 
 	// Dial
-	dialer := Dialer{transport{}}
-	conn, err := dialer.Dial(fmt.Sprintf("http://%s", addr), nil, 1*time.Second)
+	dialer := Dialer{
+		Transport: transport{},
+		Timeout:   1 * time.Second,
+	}
+	conn, err := dialer.Dial(context.Background(), fmt.Sprintf("http://%s", addr), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,8 +53,11 @@ func TestDialTimeout(t *testing.T) {
 	go h2cServe(addr, "dial-timeout")
 
 	// Dial
-	dialer := Dialer{transport{}}
-	_, err := dialer.Dial(fmt.Sprintf("http://%s", addr), nil, 50*time.Millisecond)
+	dialer := Dialer{
+		Transport: transport{},
+		Timeout:   50 * time.Millisecond,
+	}
+	_, err := dialer.Dial(context.Background(), fmt.Sprintf("http://%s", addr), nil)
 	if netErr, ok := err.(net.Error); !ok || !netErr.Timeout() {
 		t.Fatalf("Expected: timeout error, got: %v", err)
 	}
@@ -62,8 +69,8 @@ func TestReadTimeout(t *testing.T) {
 	go h2cServe(addr, "read-timeout")
 
 	// Dial
-	dialer := Dialer{transport{}}
-	conn, err := dialer.Dial(fmt.Sprintf("http://%s", addr), nil, 0)
+	dialer := Dialer{Transport: transport{}}
+	conn, err := dialer.Dial(context.Background(), fmt.Sprintf("http://%s", addr), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,6 +86,25 @@ func TestReadTimeout(t *testing.T) {
 	// Close connection
 	if err := conn.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCancelContext(t *testing.T) {
+	// Launch h2c server
+	addr := "localhost:8154"
+	go h2cServe(addr, "dial-timeout")
+
+	// Dial
+	dialer := Dialer{
+		Transport: transport{},
+		Timeout:   50 * time.Millisecond,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := dialer.Dial(ctx, fmt.Sprintf("http://%s", addr), nil)
+	if err != context.Canceled {
+		t.Fatalf("Expected: context canceled, got: %v", err)
 	}
 }
 

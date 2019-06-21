@@ -16,10 +16,14 @@ type Dialer struct {
 	// Transport specifies the mechanism by which HTTP POST request is made.
 	// If nil, http.DefaultTransport is used.
 	Transport http.RoundTripper
+
+	// Timeout specifies a time limit for dialing.
+	// A Timeout of zero means no timeout.
+	Timeout time.Duration
 }
 
 // Dial creates a net.Conn based on a POST request within the http.RoundTripper
-func (d *Dialer) Dial(addr string, headers map[string]string, timeout time.Duration) (net.Conn, error) {
+func (d *Dialer) Dial(parent context.Context, addr string, headers map[string]string) (net.Conn, error) {
 	// Get transport
 	transport := d.Transport
 	if transport == nil {
@@ -37,13 +41,13 @@ func (d *Dialer) Dial(addr string, headers map[string]string, timeout time.Durat
 	for k, v := range headers {
 		req.Header.Add(k, v)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parent)
 	req = req.WithContext(ctx)
 
 	// Timer to control request timeout
 	timer, stop := context.WithCancel(context.Background())
-	if timeout > 0 {
-		timer, stop = context.WithTimeout(ctx, timeout)
+	if d.Timeout > 0 {
+		timer, stop = context.WithTimeout(ctx, d.Timeout)
 		go func() {
 			<-timer.Done()
 			if timer.Err() == context.DeadlineExceeded {

@@ -13,6 +13,7 @@ Example of creating a net.Conn from a HTTP2 request
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -22,8 +23,8 @@ import (
 
 func main() {
 	// Dial to http2.golang.org example server
-	dialer := rtconn.Dialer{}
-	conn, err := dialer.Dial("https://http2.golang.org/reqinfo", nil, 10*time.Second)
+	dialer := rtconn.Dialer{Timeout: 10 * time.Second}
+	conn, err := dialer.Dial(context.Background(), "https://http2.golang.org/reqinfo", nil)
 	if err != nil {
 		panic(err)
 	}
