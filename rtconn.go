@@ -45,7 +45,8 @@ func (d *Dialer) Dial(parent context.Context, addr string, headers map[string]st
 	req = req.WithContext(ctx)
 
 	// Timer to control request timeout
-	timer, stop := context.WithCancel(context.Background())
+	timer := context.Background()
+	stop := context.CancelFunc(func() {})
 	if d.Timeout > 0 {
 		timer, stop = context.WithTimeout(ctx, d.Timeout)
 		go func() {
