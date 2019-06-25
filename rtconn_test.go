@@ -77,7 +77,9 @@ func TestReadTimeout(t *testing.T) {
 
 	// Read
 	data := make([]byte, 64)
-	conn.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
+	if err := conn.SetReadDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
 	_, err = conn.Read(data)
 	if netErr, ok := err.(net.Error); !ok || !netErr.Timeout() {
 		t.Fatalf("Expected: timeout error, got: %v", err)

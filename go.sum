@@ -1,5 +1,7 @@
 github.com/igolaizola/context v0.0.0-20190621063043-d61b90eee56e h1:Bor4Dw0Ny3exfKMowBnRojxzF9OrtbGx7PIfxJ+cUKw=
 github.com/igolaizola/context v0.0.0-20190621063043-d61b90eee56e/go.mod h1:8Mw2hJ9PBxqow50PTM888DW1shHEh3/xBy3Det6H5d0=
+github.com/igolaizola/context v0.0.0-20190625150201-3e35dac8c835 h1:OAImlxzR+qSRZogP28Xxw0Kns5fwXmLxNvlrJFYpGhc=
+github.com/igolaizola/context v0.0.0-20190625150201-3e35dac8c835/go.mod h1:8Mw2hJ9PBxqow50PTM888DW1shHEh3/xBy3Det6H5d0=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/net v0.0.0-20190620200207-3b0461eec859 h1:R/3boaszxrf1GEUWTVDzSKVwLmSJpwZ1yqXm8j0v2QI=
 golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
