@@ -110,6 +110,27 @@ func TestCancelContext(t *testing.T) {
 	}
 }
 
+func TestSetDeadline(t *testing.T) {
+	// Launch h2c server
+	addr := "localhost:8154"
+	go h2cServe(addr, "dial-timeout")
+
+	// Dial
+	dialer := Dialer{Transport: transport{}}
+	conn, err := dialer.Dial(context.Background(), fmt.Sprintf("http://%s", addr), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := conn.SetDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	<-time.After(100 * time.Millisecond)
+	if err := conn.SetDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func h2cServe(addr string, h handler) {
 	srv := &http.Server{
 		Addr:    addr,

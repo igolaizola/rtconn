@@ -2,6 +2,7 @@ package rtconn
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -193,12 +194,28 @@ func (r *roundTripConn) SetDeadline(t time.Time) error {
 
 // SetReadDeadline implements net.Conn.SetReadDeadline
 func (r *roundTripConn) SetReadDeadline(t time.Time) error {
-	return r.readDeadline.SetDeadline(t)
+	if err := r.context.Err(); err != nil {
+		return err
+	}
+	err := r.readDeadline.SetDeadline(t)
+	if errors.Is(err, context.DeadlineExceeded) {
+		r.readDeadline, _ = igoctx.WithDeadline(r.context)
+		return r.readDeadline.SetDeadline(t)
+	}
+	return err
 }
 
 // SetWriteDeadline implements net.Conn.SetWriteDeadline
 func (r *roundTripConn) SetWriteDeadline(t time.Time) error {
-	return r.writeDeadline.SetDeadline(t)
+	if err := r.context.Err(); err != nil {
+		return err
+	}
+	err := r.writeDeadline.SetDeadline(t)
+	if errors.Is(err, context.DeadlineExceeded) {
+		r.writeDeadline, _ = igoctx.WithDeadline(r.context)
+		return r.writeDeadline.SetDeadline(t)
+	}
+	return err
 }
 
 // addr is a net.Addr implementation
