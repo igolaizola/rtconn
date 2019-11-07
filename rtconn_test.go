@@ -129,6 +129,59 @@ func TestSetDeadline(t *testing.T) {
 	if err := conn.SetDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
 		t.Fatal(err)
 	}
+
+	// Close connection
+	if err := conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReadAfterTimeout(t *testing.T) {
+	// Launch h2c server
+	addr := "localhost:8154"
+	go h2cServe(addr, "echo")
+
+	// Dial
+	dialer := Dialer{Transport: transport{}}
+	conn, err := dialer.Dial(context.Background(), fmt.Sprintf("http://%s", addr), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Try reading and time out
+	dummy := make([]byte, 64)
+	if err := conn.SetReadDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	_, err = conn.Read(dummy)
+	if netErr, ok := err.(net.Error); !ok || !netErr.Timeout() {
+		t.Fatalf("Expected: timeout error, got: %v", err)
+	}
+
+	// Write data
+	if _, err := conn.Write([]byte("echo world")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Read data
+	for _, word := range []string{"echo ", "world"} {
+		data := make([]byte, len([]byte(word)))
+		if err := conn.SetReadDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
+			t.Fatal(err)
+		}
+		n, err := conn.Read(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data[:n]) != word {
+			t.Fatalf("Expected: %s , got: %s", word, string(data[:n]))
+		}
+	}
+
+	// Close connection
+	if err := conn.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func h2cServe(addr string, h handler) {

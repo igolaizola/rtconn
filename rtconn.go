@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	igoctx "github.com/igolaizola/context"
@@ -85,6 +86,7 @@ func (d *Dialer) Dial(parent context.Context, addr string, headers map[string]st
 		cancel:        cancel,
 		readDeadline:  rdCtx,
 		writeDeadline: wrCtx,
+		readLock:      &sync.Mutex{},
 	}
 	return conn, nil
 }
@@ -98,30 +100,51 @@ type roundTripConn struct {
 	cancel        context.CancelFunc
 	readDeadline  igoctx.Context
 	writeDeadline igoctx.Context
+	readChan      chan readResult
+	readLock      *sync.Mutex
 }
 
-type result struct {
-	n   int
-	err error
+type readResult struct {
+	n    int
+	err  error
+	data []byte
 }
 
 // Read implements net.Conn.Read
 func (r *roundTripConn) Read(b []byte) (int, error) {
-	done := make(chan result)
-	quit := make(chan struct{})
-	defer close(quit)
-	go func() {
-		n, err := r.reader.Read(b)
-		select {
-		case <-quit:
-		case done <- result{n, err}:
-		}
-		close(done)
-	}()
+	// Multiple concurrent calls to Read get blocked
+	r.readLock.Lock()
+	defer r.readLock.Unlock()
 
+	// Launch inner read call if needed
+	if r.readChan == nil {
+		r.readChan = make(chan readResult)
+		go func() {
+			n, err := r.reader.Read(b)
+			data := make([]byte, n)
+			copy(data, b[:n])
+			r.readChan <- readResult{n, err, data}
+		}()
+	}
+
+	// Wait for data or deadline
 	select {
-	case r := <-done:
-		return r.n, r.err
+	case read := <-r.readChan:
+		n := read.n
+		if n > len(b) {
+			n = len(b)
+			// Add exceeding data to read channel
+			data := make([]byte, read.n-n)
+			copy(data[0:read.n-n], read.data[n:read.n])
+			go func() {
+				r.readChan <- readResult{read.n - n, read.err, data}
+			}()
+		} else {
+			// Reset read channel
+			r.readChan = nil
+		}
+		copy(b[:n], read.data[:n])
+		return n, read.err
 	case <-r.readDeadline.Done():
 		// WARNING! conn.Close must be called in order to unblock internal goroutine
 		return 0, timeoutError("rtconn: read timed out")
@@ -130,16 +153,21 @@ func (r *roundTripConn) Read(b []byte) (int, error) {
 	}
 }
 
+type writeResult struct {
+	n   int
+	err error
+}
+
 // Write implements net.Conn.Write
 func (r *roundTripConn) Write(b []byte) (int, error) {
-	done := make(chan result)
+	done := make(chan writeResult)
 	quit := make(chan struct{})
 	defer close(quit)
 	go func() {
 		n, err := r.writer.Write(b)
 		select {
 		case <-quit:
-		case done <- result{n, err}:
+		case done <- writeResult{n, err}:
 		}
 		close(done)
 	}()
