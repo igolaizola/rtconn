@@ -25,7 +25,7 @@ type Dialer struct {
 }
 
 // Dial creates a net.Conn based on a POST request within the http.RoundTripper
-func (d *Dialer) Dial(parent context.Context, addr string, headers map[string]string) (net.Conn, error) {
+func (d *Dialer) Dial(parent context.Context, addr string, header http.Header) (net.Conn, error) {
 	// Get transport
 	transport := d.Transport
 	if transport == nil {
@@ -40,9 +40,7 @@ func (d *Dialer) Dial(parent context.Context, addr string, headers map[string]st
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range headers {
-		req.Header.Add(k, v)
-	}
+	req.Header = header
 	ctx, cancel := context.WithCancel(parent)
 	req = req.WithContext(ctx)
 
