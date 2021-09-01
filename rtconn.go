@@ -197,7 +197,7 @@ func (r *roundTripConn) Close() error {
 
 // LocalAddr implements net.Conn.LocalAddr
 func (r *roundTripConn) LocalAddr() net.Addr {
-	return nil
+	return addr("")
 }
 
 // RemoteAddr implements net.Conn.RemoteAddr
